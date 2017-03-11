@@ -1,4 +1,5 @@
 'use strict';
+//test checkin
 var Alexa = require("alexa-sdk");
 var appId = ''; //'amzn1.echo-sdk-ams.app.your-skill-id';
 
