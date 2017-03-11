@@ -1,1 +1,1 @@
-TestIntent say yes or no to questions
+TestIntent please answer yes or no to the questions i ask
