@@ -1,16 +1,15 @@
 {
-  "name": "myLambdaFunction",
+  "name": "alexa-friend-name-guessing-game",
   "version": "1.0.0",
-  "description": "a guessing game",
+  "description": "Friend name guessing game for Alexa",
   "bugs": {
-    "url": "https://github.com/frankgreco/alexa/issues",
-    "email": "fbgrecojr@me.com"
+    "url": "https://github.com/avirnig/alexa-friend-name-guessing-game/issues",
+    "email": "virniga@gmail.com"
   },
   "license": "MIT",
   "author": {
-    "name": "Frank B Greco Jr",
-    "email": "fbgrecojr@me.com",
-    "url": "http://www.frankgrecojr.com"
+    "name": "Aaron Virnig",
+    "email": "virniga@gmail.com"
   },
   "dependencies": {
     "alexa-sdk": "1.0.6"
