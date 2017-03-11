@@ -1,5 +1,6 @@
 {
   "intents": [
+    { "intent": "TestIntent"          },
     { "intent": "AMAZON.YesIntent"    },
     { "intent": "AMAZON.NoIntent"     },
     { "intent": "AMAZON.HelpIntent"   },
