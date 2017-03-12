@@ -12,6 +12,6 @@
     "email": "virniga@gmail.com"
   },
   "dependencies": {
-    "alexa-sdk": "1.0.6"
+    "alexa-sdk": "1.0.7"
   }
 }

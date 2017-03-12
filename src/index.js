@@ -1,20 +1,17 @@
 'use strict';
-//test checkin
 var Alexa = require("alexa-sdk");
 var appId = ''; //'amzn1.echo-sdk-ams.app.your-skill-id';
-
-//hello world
 
 exports.handler = function(event, context, callback) {
     var alexa = Alexa.handler(event, context);
     alexa.appId = appId;
-    alexa.dynamoDBTableName = 'myDynamoDbTable';
+    alexa.dynamoDBTableName = 'myDynamoDbNameTable';
     alexa.registerHandlers(newSessionHandlers, guessModeHandlers, startGameHandlers, guessAttemptHandlers);
     alexa.execute();
 };
 
 var states = {
-    GUESSMODE: '_GUESSMODE', // User is trying to guess the number.
+    GUESSMODE: '_GUESSMODE', // User is trying to have Alexa guess the name.
     STARTMODE: '_STARTMODE'  // Prompt the user to start or restart the game.
 };
 
@@ -24,19 +21,21 @@ var newSessionHandlers = {
             this.attributes['gamesPlayed'] = 0;
         }
         this.handler.state = states.STARTMODE;
-        this.emit(':ask', 'Welcome to guessing game. You have played '
-            + this.attributes['gamesPlayed'].toString() + ' times. would you like to play?',
+        this.emit(':ask', 'Hi Brooke. Welcome to your friend name guessing game. Would you like to play?',
             'Say yes to start the game or no to quit.');
+
+//You have played '+ this.attributes['gamesPlayed'].toString() + ' times.
+
     },
     "AMAZON.StopIntent": function() {
-      this.emit(':tell', "Goodbye!");
+      this.emit(':tell', "Goodbye Brooke!");
     },
     "AMAZON.CancelIntent": function() {
-      this.emit(':tell', "Goodbye!");
+      this.emit(':tell', "Goodbye Brooke!");
     },
     'SessionEndedRequest': function () {
         console.log('session ended!');
-        this.emit(":tell", "Goodbye!");
+        this.emit(":tell", "Goodbye Brooke!");
     }
 };
 
@@ -45,34 +44,35 @@ var startGameHandlers = Alexa.CreateStateHandler(states.STARTMODE, {
         this.emit('NewSession'); // Uses the handler in newSessionHandlers
     },
     'AMAZON.HelpIntent': function() {
-        var message = 'I will think of a number between zero and one hundred, try to guess and I will tell you if it' +
-            ' is higher or lower. Do you want to start the game?';
+        var message = 'Think of the first name of one of your friends. I will try to guess that persons name by' +
+            ' asking if the name contains a certain letter. Do you want to play the game?';
         this.emit(':ask', message, message);
     },
     'AMAZON.YesIntent': function() {
-        this.attributes["guessNumber"] = Math.floor(Math.random() * 100);
+        //this.attributes["guessNumber"] = Math.floor(Math.random() * 100);
         this.handler.state = states.GUESSMODE;
-        this.emit(':ask', 'Great! ' + 'Try saying a number to start the game.', 'Try saying a number.');
+        //this.emit(':ask', 'Great! ' + 'Try saying a number to start the game.', 'Try saying a number.');
+        //this.emit(':ask', 'Great! Think of the first name of one of your friends. Are you ready?');
     },
     'AMAZON.NoIntent': function() {
         console.log("NOINTENT");
-        this.emit(':tell', 'Ok, see you next time!');
+        this.emit(':tell', 'Ok, see you next time! Goodbye Brooke!');
     },
     "AMAZON.StopIntent": function() {
       console.log("STOPINTENT");
-      this.emit(':tell', "Goodbye!");
+      this.emit(':tell', "Goodbye Brooke!");
     },
     "AMAZON.CancelIntent": function() {
       console.log("CANCELINTENT");
-      this.emit(':tell', "Goodbye!");
+      this.emit(':tell', "Goodbye Brooke!");
     },
     'SessionEndedRequest': function () {
         console.log("SESSIONENDEDREQUEST");
-        this.emit(':tell', "Goodbye!");
+        this.emit(':tell', "Goodbye Brooke!");
     },
     'Unhandled': function() {
         console.log("UNHANDLED");
-        var message = 'Say yes to continue, or no to end the game.';
+        var message = 'Say yes to keep playing, or no to end the game.';
         this.emit(':ask', message, message);
     }
 });
@@ -82,7 +82,7 @@ var guessModeHandlers = Alexa.CreateStateHandler(states.GUESSMODE, {
         this.handler.state = '';
         this.emitWithState('NewSession'); // Equivalent to the Start Mode NewSession handler
     },
-    'NumberGuessIntent': function() {
+    'NameGuessIntent': function() {
         var guessNum = parseInt(this.event.request.intent.slots.number.value);
         var targetNum = this.attributes["guessNumber"];
         console.log('user guessed: ' + guessNum);
