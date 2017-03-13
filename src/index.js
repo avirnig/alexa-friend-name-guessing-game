@@ -1,19 +1,25 @@
 'use strict';
 var Alexa = require("alexa-sdk");
 var appId = ''; //'amzn1.echo-sdk-ams.app.your-skill-id';
+var fs = require('fs');
+var obj = JSON.parse(fs.readFileSync('names.json', 'utf8'));
+var names = obj.names;
+var alphabet = 'abcdefghijklmnopqrstuvwxyz';
+var letter = '';
 
 exports.handler = function(event, context, callback) {
     var alexa = Alexa.handler(event, context);
     alexa.appId = appId;
     alexa.dynamoDBTableName = 'myDynamoDbNameTable';
-    alexa.registerHandlers(newSessionHandlers, guessModeHandlers, startGameHandlers, guessAttemptHandlers);
+    alexa.registerHandlers(newSessionHandlers, startGameHandlers, guessModeHandlers, solutionModeHandlers);
     alexa.execute();
 };
 
-var states = {
-    GUESSMODE: '_GUESSMODE', // User is trying to have Alexa guess the name.
-    STARTMODE: '_STARTMODE'  // Prompt the user to start or restart the game.
-};
+ var states = {
+     STARTMODE: '_STARTMODE',  // Prompt the user to start or restart the game.
+     GUESSMODE: '_GUESSMODE', // Alexa is attempting to guess letters in the name.
+     SOLUTIONMODE: '_SOLUTIONMODE' // Alexa has guessed the name.
+ };
 
 var newSessionHandlers = {
     'NewSession': function() {
@@ -21,21 +27,20 @@ var newSessionHandlers = {
             this.attributes['gamesPlayed'] = 0;
         }
         this.handler.state = states.STARTMODE;
-        this.emit(':ask', 'Hi Brooke. Welcome to your friend name guessing game. Would you like to play?',
+        this.emit(':ask', ' Hi ' + obj.user + '. Welcome to your friend name guessing game. Would you like to play?',
             'Say yes to start the game or no to quit.');
-
-//You have played '+ this.attributes['gamesPlayed'].toString() + ' times.
-
     },
-    "AMAZON.StopIntent": function() {
-      this.emit(':tell', "Goodbye Brooke!");
+    'AMAZON.StopIntent': function() {
+        this.emit(':tell', 'Goodbye ' + obj.user + '!');
     },
-    "AMAZON.CancelIntent": function() {
-      this.emit(':tell', "Goodbye Brooke!");
+    'AMAZON.CancelIntent': function() {
+        this.emit(':tell', 'Goodbye ' + obj.user + '!');
     },
     'SessionEndedRequest': function () {
-        console.log('session ended!');
-        this.emit(":tell", "Goodbye Brooke!");
+        this.emit(':tell', 'Goodbye ' + obj.user + '!');
+    },
+    'Unhandled': function () {
+        this.emit(':tell', 'you messed up!');
     }
 };
 
@@ -49,29 +54,27 @@ var startGameHandlers = Alexa.CreateStateHandler(states.STARTMODE, {
         this.emit(':ask', message, message);
     },
     'AMAZON.YesIntent': function() {
-        //this.attributes["guessNumber"] = Math.floor(Math.random() * 100);
         this.handler.state = states.GUESSMODE;
-        //this.emit(':ask', 'Great! ' + 'Try saying a number to start the game.', 'Try saying a number.');
-        //this.emit(':ask', 'Great! Think of the first name of one of your friends. Are you ready?');
+        if ((this.attributes['gamesPlayed'] != 0) && (this.attributes['gamesPlayed'] % 5 == 0)) {
+            this.emit(':ask', 'By the way, your dad is pretty awesome. Think of the first name of one of your friends. Are you ready?', 'Are you ready?');
+        }
+        else {
+            this.emit(':ask', 'Think of the first name of one of your friends. Are you ready?', 'Are you ready?');
+        }
     },
     'AMAZON.NoIntent': function() {
-        console.log("NOINTENT");
-        this.emit(':tell', 'Ok, see you next time! Goodbye Brooke!');
+        this.emit(':tell', 'Ok, see you next time! Goodbye ' + obj.user + '!');
     },
     "AMAZON.StopIntent": function() {
-      console.log("STOPINTENT");
-      this.emit(':tell', "Goodbye Brooke!");
+        this.emit(':tell', 'Goodbye ' + obj.user + '!');
     },
     "AMAZON.CancelIntent": function() {
-      console.log("CANCELINTENT");
-      this.emit(':tell', "Goodbye Brooke!");
+        this.emit(':tell', 'Goodbye ' + obj.user + '!');
     },
     'SessionEndedRequest': function () {
-        console.log("SESSIONENDEDREQUEST");
-        this.emit(':tell', "Goodbye Brooke!");
+        this.emit(':tell', 'Goodbye ' + obj.user + '!');
     },
     'Unhandled': function() {
-        console.log("UNHANDLED");
         var message = 'Say yes to keep playing, or no to end the game.';
         this.emit(':ask', message, message);
     }
@@ -82,60 +85,118 @@ var guessModeHandlers = Alexa.CreateStateHandler(states.GUESSMODE, {
         this.handler.state = '';
         this.emitWithState('NewSession'); // Equivalent to the Start Mode NewSession handler
     },
-    'NameGuessIntent': function() {
-        var guessNum = parseInt(this.event.request.intent.slots.number.value);
-        var targetNum = this.attributes["guessNumber"];
-        console.log('user guessed: ' + guessNum);
-
-        if(guessNum > targetNum){
-            this.emit('TooHigh', guessNum);
-        } else if( guessNum < targetNum){
-            this.emit('TooLow', guessNum);
-        } else if (guessNum === targetNum){
-            // With a callback, use the arrow function to preserve the correct 'this' context
-            this.emit('JustRight', () => {
-                this.emit(':ask', guessNum.toString() + 'is correct! Would you like to play a new game?',
-                'Say yes to start a new game, or no to end the game.');
-        })
-        } else {
-            this.emit('NotANum');
+    'AMAZON.YesIntent': function() {
+        if (letter != '') {
+            names = names.filter(function(name) {
+                return name.includes(letter);
+            });
+            //console.log('answer = yes');
+            //console.log('letter = ' + letter);
+            //console.log('names = ' + names);
+        }
+        if (names.length == 0) {
+            this.handler.state = states.STARTMODE;
+            this.attributes['gamesPlayed']++;
+            alphabet = "abcdefghijklmnopqrstuvwxyz"; //reset the alphabet
+            letter = '';
+            names = obj.names; //reset the list of names
+            this.emit(':ask', 'I\'ve run out of names to guess. We must have made a mistake. Lets start over. Would you like to play again?');
+        }
+        else if (names.length == 1) {
+            this.handler.state = states.SOLUTIONMODE;
+            this.emit(':ask', 'Is ' + names[0] + ' the name you were thinking of?');
+        }
+        else {
+            var num = Math.floor(Math.random() * alphabet.length);
+            letter = alphabet.charAt(num);
+            alphabet = alphabet.slice(0, num) + alphabet.slice(num + 1);
+            this.emit(':ask', 'Does the name have ' + letter + ' in it?', 'Does the name have ' + letter + ' in it?');
+        }
+    },
+    'AMAZON.NoIntent': function() {
+        if (letter == '') {
+            this.emit(':tell', 'Ok, see you next time! Goodbye ' + obj.user + '!');
+        }
+        else {
+            names = names.filter(function(name) {
+                return !name.includes(letter);
+            });
+            //console.log('answer = no');
+            //console.log('letter = ' + letter);
+            //console.log('names = ' + names);
+            if (names.length == 0) {
+                this.handler.state = states.STARTMODE;
+                this.attributes['gamesPlayed']++;
+                alphabet = "abcdefghijklmnopqrstuvwxyz"; //reset the alphabet
+                letter = '';
+                names = obj.names; //reset the list of names
+                this.emit(':ask', 'I\'ve run out of names to guess. We must have made a mistake. Lets start over. Would you like to play again?');
+            }
+            else if (names.length == 1) {
+                this.handler.state = states.SOLUTIONMODE;
+                this.emit(':ask', 'Is ' + names[0] + ' the name you were thinking of?');
+            }
+            else {
+                var num = Math.floor(Math.random() * alphabet.length);
+                letter = alphabet.charAt(num);
+                alphabet = alphabet.slice(0, num) + alphabet.slice(num + 1);
+                this.emit(':ask', 'Does the name have ' + letter + ' in it?', 'Does the name have ' + letter + ' in it?');
+            }
         }
     },
     'AMAZON.HelpIntent': function() {
-        this.emit(':ask', 'I am thinking of a number between zero and one hundred, try to guess and I will tell you' +
-            ' if it is higher or lower.', 'Try saying a number.');
+        this.emit(':ask', 'I will try to figure out your friends name by guessing one letter at a time.',
+        'Let me know if I am right.');
     },
-    "AMAZON.StopIntent": function() {
-        console.log("STOPINTENT");
-      this.emit(':tell', "Goodbye!");
+    'AMAZON.StopIntent': function() {
+        this.emit(':tell', 'Goodbye' + obj.user + '!');
     },
-    "AMAZON.CancelIntent": function() {
-        console.log("CANCELINTENT");
+    'AMAZON.CancelIntent': function() {
+        console.log('CANCELINTENT');
     },
     'SessionEndedRequest': function () {
-        console.log("SESSIONENDEDREQUEST");
-        this.emit(':tell', "Goodbye!");
+        this.emit(':tell', 'Goodbye' + obj.user + '!');
     },
     'Unhandled': function() {
-        console.log("UNHANDLED");
-        this.emit(':ask', 'Sorry, I didn\'t get that. Try saying a number.', 'Try saying a number.');
+        this.emit(':ask', 'Sorry, I didn\'t get that. Let me know if my guess is correct.', 'Let me know if my guess is correct');
     }
-});
+ });
 
-// These handlers are not bound to a state
-var guessAttemptHandlers = {
-    'TooHigh': function(val) {
-        this.emit(':ask', val.toString() + ' is too high.', 'Try saying a smaller number.');
+ var solutionModeHandlers = Alexa.CreateStateHandler(states.SOLUTIONMODE, {
+    'NewSession': function () {
+        this.handler.state = '';
+        this.emitWithState('NewSession'); // Equivalent to the Start Mode NewSession handler
     },
-    'TooLow': function(val) {
-        this.emit(':ask', val.toString() + ' is too low.', 'Try saying a larger number.');
-    },
-    'JustRight': function(callback) {
+    'AMAZON.YesIntent': function() {
         this.handler.state = states.STARTMODE;
         this.attributes['gamesPlayed']++;
-        callback();
+        alphabet = 'abcdefghijklmnopqrstuvwxyz'; //reset the alphabet
+        letter = '';
+        names = obj.names; //reset the list of names
+        this.emit(':ask', 'Yay! That was fun. Would you like to play again?', 'Would you like to play again?');
     },
-    'NotANum': function() {
-        this.emit(':ask', 'Sorry, I didn\'t get that. Try saying a number.', 'Try saying a number.');
+    'AMAZON.NoIntent': function() {
+        this.handler.state = states.STARTMODE;
+        this.attributes['gamesPlayed']++;
+        alphabet = 'abcdefghijklmnopqrstuvwxyz'; //reset the alphabet
+        letter = '';
+        names = obj.names; //reset the list of names
+        this.emit(':ask', 'I guessed wrong. Lets start over. Would you like to play again?', 'Would you like to play again?');
+    },
+    'AMAZON.HelpIntent': function() {
+        this.emit(':ask', 'I will try to figure out your friends name by guessing one letter at a time.',
+        'Let me know if I am right.');
+    },
+    'AMAZON.StopIntent': function() {
+      this.emit(':tell', 'Goodbye' + obj.user + '!');
+    },
+    'AMAZON.CancelIntent': function() {
+        console.log('CANCELINTENT');
+    },
+    'SessionEndedRequest': function () {
+        this.emit(':tell', 'Goodbye' + obj.user + '!');
+    },
+    'Unhandled': function() {
+        this.emit(':ask', 'Sorry, I didn\'t get that. Let me know if my guess is correct.', 'Let me know if my guess is correct');
     }
-};
+});
